@@ -1,184 +1,101 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../domain/entities/chapter_entity.dart';
 
-class ChapterNodeWidget extends StatefulWidget {
-  final ChapterEntity entity;
-  final VoidCallback onCompleted;
+enum NodeStatus { locked, current, completed }
 
-  const ChapterNodeWidget({
-    super.key,
-    required this.entity,
-    required this.onCompleted,
-  });
+class PathNode {
+  final String svgPath;
+  final NodeStatus status;
 
-  @override
-  State<ChapterNodeWidget> createState() => _ChapterNodeWidgetState();
+  PathNode({required this.svgPath, required this.status});
 }
 
-class _ChapterNodeWidgetState extends State<ChapterNodeWidget>
-    with TickerProviderStateMixin {
-  late AnimationController _bounce;
-  late Animation<double> _scale;
-  late AnimationController _shake;
-  double shakeValue = 0;
+class SnakeNodesPath extends StatelessWidget {
+  final List<PathNode> nodes;
+  final double amplitude; // how wide snake moves left/right
+
+  const SnakeNodesPath({super.key, required this.nodes, this.amplitude = 80});
 
   @override
   Widget build(BuildContext context) {
-    Color base;
-    IconData icon;
-    switch (widget.entity.status) {
-      case ChapterStatus.completed:
-        base = AppColors.completed;
-        icon = Icons.check_circle;
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: List.generate(nodes.length, (i) {
+          // create wave movement
+          final dx = math.sin(i * 0.8) * amplitude;
+
+          return Transform.translate(
+            offset: Offset(dx, 0),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: _NodeWidget(node: nodes[i]),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _NodeWidget extends StatelessWidget {
+  final PathNode node;
+
+  const _NodeWidget({required this.node});
+
+  @override
+  Widget build(BuildContext context) {
+    const double size = 80;
+
+    Color border;
+    List<Color> gradient;
+    double opacity = 1.0;
+
+    switch (node.status) {
+      case NodeStatus.completed:
+        border = AppColors.completed;
+        gradient = [const Color(0xFFa0e37f), const Color(0xFF63c966)];
         break;
-      case ChapterStatus.current:
-        base = AppColors.current;
-        icon = Icons.play_circle_fill;
+      case NodeStatus.current:
+        border = AppColors.current;
+        gradient = [const Color(0xFF89CFF0), const Color(0xFF0077c2)];
         break;
-      case ChapterStatus.locked:
-        base = AppColors.locked;
-        icon = Icons.lock;
+      case NodeStatus.locked:
+        border = AppColors.locked;
+        gradient = [const Color(0xFFE0E0E0), const Color(0xFFBDBDBD)];
+        opacity = 0.4;
         break;
     }
 
-    return GestureDetector(
-      onTap: _handleTap,
-      child: Transform.translate(
-        offset: Offset(shakeValue, 0),
-        child: ScaleTransition(
-          scale: widget.entity.status == ChapterStatus.current
-              ? _scale.drive(Tween(begin: 0.95, end: 1.05))
-              : const AlwaysStoppedAnimation(1.0),
-          child: Container(
-            width: 90,
-            height: 90,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: base.withOpacity(.15),
-              border: Border.all(color: base, width: 3),
-              boxShadow: widget.entity.status == ChapterStatus.current
-                  ? [
-                      BoxShadow(
-                        color: base.withOpacity(.5),
-                        blurRadius: 25,
-                        spreadRadius: 4,
-                      ),
-                    ]
-                  : [],
-            ),
-            child: Stack(
-              children: [
-                // Progress ring background
-                CustomPaint(
-                  painter: _RingPainter(
-                    progress: widget.entity.progress,
-                    color: base,
-                  ),
-                  child: Center(child: Icon(icon, size: 45, color: base)),
-                ),
-              ],
-            ),
+    return Opacity(
+      opacity: opacity,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: gradient,
           ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              offset: Offset(0, 6),
+              blurRadius: 12,
+            ),
+          ],
+          border: Border.all(color: border, width: 3),
+        ),
+        child: Center(
+          child: SvgPicture.asset(node.svgPath, width: 40, height: 40),
         ),
       ),
     );
   }
-
-  @override
-  void didUpdateWidget(covariant ChapterNodeWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.entity.status == ChapterStatus.current) {
-      if (!_bounce.isAnimating) _bounce.repeat(reverse: true);
-    } else {
-      _bounce.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _bounce.dispose();
-    _shake.dispose();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _bounce = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-      lowerBound: 0.92,
-      upperBound: 1.05,
-    )..repeat(reverse: true);
-    _scale = CurvedAnimation(parent: _bounce, curve: Curves.easeInOut);
-
-    if (widget.entity.status != ChapterStatus.current) {
-      _bounce.stop();
-    }
-    _shake =
-        AnimationController(
-            vsync: this,
-            duration: const Duration(milliseconds: 350),
-          )
-          ..addListener(() {
-            setState(() {
-              shakeValue = math.sin(_shake.value * math.pi * 6) * 6;
-            });
-          })
-          ..addStatusListener((s) {
-            if (s == AnimationStatus.completed) _shake.reset();
-          });
-  }
-
-  void _handleTap() {
-    if (widget.entity.status == ChapterStatus.locked) {
-      _shake.forward();
-      return;
-    }
-    if (widget.entity.status == ChapterStatus.current &&
-        widget.entity.progress >= 1.0) {
-      widget.onCompleted();
-    }
-  }
-}
-
-class _RingPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  _RingPainter({required this.progress, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size s) {
-    const stroke = 6.0;
-    final r = (s.width - stroke) / 2;
-    final center = Offset(s.width / 2, s.height / 2);
-    final bg = Paint()
-      ..color = color.withOpacity(.25)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke;
-    final fg = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, r, bg);
-
-    final sweepAngle = 2 * math.pi * progress;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: r),
-      -math.pi / 2,
-      sweepAngle,
-      false,
-      fg,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _RingPainter old) =>
-      old.progress != progress || old.color != color;
 }
