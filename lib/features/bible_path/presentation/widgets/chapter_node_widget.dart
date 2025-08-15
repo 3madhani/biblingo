@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/entities/chapter_entity.dart';
 
@@ -23,63 +25,6 @@ class _ChapterNodeWidgetState extends State<ChapterNodeWidget>
   late Animation<double> _scale;
   late AnimationController _shake;
   double shakeValue = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _bounce = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-      lowerBound: 0.92,
-      upperBound: 1.05,
-    )..repeat(reverse: true);
-    _scale = CurvedAnimation(parent: _bounce, curve: Curves.easeInOut);
-
-    if (widget.entity.status != ChapterStatus.current) {
-      _bounce.stop();
-    }
-    _shake =
-        AnimationController(
-            vsync: this,
-            duration: const Duration(milliseconds: 350),
-          )
-          ..addListener(() {
-            setState(() {
-              shakeValue = math.sin(_shake.value * math.pi * 6) * 6;
-            });
-          })
-          ..addStatusListener((s) {
-            if (s == AnimationStatus.completed) _shake.reset();
-          });
-  }
-
-  @override
-  void didUpdateWidget(covariant ChapterNodeWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.entity.status == ChapterStatus.current) {
-      if (!_bounce.isAnimating) _bounce.repeat(reverse: true);
-    } else {
-      _bounce.stop();
-    }
-  }
-
-  void _handleTap() {
-    if (widget.entity.status == ChapterStatus.locked) {
-      _shake.forward();
-      return;
-    }
-    if (widget.entity.status == ChapterStatus.current &&
-        widget.entity.progress >= 1.0) {
-      widget.onCompleted();
-    }
-  }
-
-  @override
-  void dispose() {
-    _bounce.dispose();
-    _shake.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +51,7 @@ class _ChapterNodeWidgetState extends State<ChapterNodeWidget>
         offset: Offset(shakeValue, 0),
         child: ScaleTransition(
           scale: widget.entity.status == ChapterStatus.current
-              ? _scale
+              ? _scale.drive(Tween(begin: 0.95, end: 1.05))
               : const AlwaysStoppedAnimation(1.0),
           child: Container(
             width: 90,
@@ -141,6 +86,63 @@ class _ChapterNodeWidgetState extends State<ChapterNodeWidget>
         ),
       ),
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant ChapterNodeWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.entity.status == ChapterStatus.current) {
+      if (!_bounce.isAnimating) _bounce.repeat(reverse: true);
+    } else {
+      _bounce.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _bounce.dispose();
+    _shake.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _bounce = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+      lowerBound: 0.92,
+      upperBound: 1.05,
+    )..repeat(reverse: true);
+    _scale = CurvedAnimation(parent: _bounce, curve: Curves.easeInOut);
+
+    if (widget.entity.status != ChapterStatus.current) {
+      _bounce.stop();
+    }
+    _shake =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 350),
+          )
+          ..addListener(() {
+            setState(() {
+              shakeValue = math.sin(_shake.value * math.pi * 6) * 6;
+            });
+          })
+          ..addStatusListener((s) {
+            if (s == AnimationStatus.completed) _shake.reset();
+          });
+  }
+
+  void _handleTap() {
+    if (widget.entity.status == ChapterStatus.locked) {
+      _shake.forward();
+      return;
+    }
+    if (widget.entity.status == ChapterStatus.current &&
+        widget.entity.progress >= 1.0) {
+      widget.onCompleted();
+    }
   }
 }
 
