@@ -11,47 +11,47 @@ class BiblePathPageBody extends StatelessWidget {
       nodes: [
         PathNode(
           svgPath: 'assets/icons/star_begain.svg',
-          status: NodeStatus.completed,
-        ),
-        PathNode(
-          svgPath: 'assets/icons/next_mission.svg',
           status: NodeStatus.current,
         ),
         PathNode(
           svgPath: 'assets/icons/next_mission.svg',
-          status: NodeStatus.current,
+          status: NodeStatus.locked,
         ),
         PathNode(
           svgPath: 'assets/icons/next_mission.svg',
-          status: NodeStatus.current,
+          status: NodeStatus.locked,
         ),
         PathNode(
           svgPath: 'assets/icons/next_mission.svg',
-          status: NodeStatus.current,
+          status: NodeStatus.locked,
         ),
         PathNode(
           svgPath: 'assets/icons/next_mission.svg',
-          status: NodeStatus.current,
+          status: NodeStatus.locked,
         ),
         PathNode(
           svgPath: 'assets/icons/next_mission.svg',
-          status: NodeStatus.current,
+          status: NodeStatus.locked,
         ),
         PathNode(
           svgPath: 'assets/icons/next_mission.svg',
-          status: NodeStatus.current,
+          status: NodeStatus.locked,
         ),
         PathNode(
           svgPath: 'assets/icons/next_mission.svg',
-          status: NodeStatus.current,
+          status: NodeStatus.locked,
         ),
         PathNode(
           svgPath: 'assets/icons/next_mission.svg',
-          status: NodeStatus.current,
+          status: NodeStatus.locked,
         ),
         PathNode(
           svgPath: 'assets/icons/next_mission.svg',
-          status: NodeStatus.current,
+          status: NodeStatus.locked,
+        ),
+        PathNode(
+          svgPath: 'assets/icons/next_mission.svg',
+          status: NodeStatus.locked,
         ),
         PathNode(
           svgPath: 'assets/icons/next_mission.svg',
