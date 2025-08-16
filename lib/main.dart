@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-// COLORS PALETTE
-import 'core/constants/app_colors.dart';
 import 'features/home/presentation/pages/root_nav.dart';
 
 void main() {
@@ -15,11 +13,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.system,
       theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.background,
-        colorSchemeSeed: AppColors.primary,
-        useMaterial3: true,
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
+      darkTheme: ThemeData.dark(),
       home: const RootNav(),
     );
   }
