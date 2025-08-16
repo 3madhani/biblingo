@@ -37,13 +37,61 @@ class SnakeNodesPath extends StatelessWidget {
   }
 }
 
-class _NodeWidget extends StatelessWidget {
+class _NodeWidget extends StatefulWidget {
   final PathNode node;
 
   const _NodeWidget({required this.node});
 
   @override
+  State<_NodeWidget> createState() => _NodeWidgetState();
+}
+
+class _NodeWidgetState extends State<_NodeWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+
+    _animation = Tween(
+      begin: -5.0,
+      end: 5.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(node.svgPath, width: 80, height: 80);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (widget.node.status == NodeStatus.current)
+          AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(0, _animation.value),
+                child: child,
+              );
+            },
+            child: const Text(
+              'ابدأ',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ),
+        SvgPicture.asset(widget.node.svgPath, width: 80, height: 80),
+      ],
+    );
   }
 }
