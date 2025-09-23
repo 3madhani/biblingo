@@ -332,7 +332,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         color: AppColors.glassBackground.withOpacity(0.2),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.goldLight,
+          color: AppColors.glassBorder,
           width: 2,
         ),
         boxShadow: AppColors.cardShadow,
