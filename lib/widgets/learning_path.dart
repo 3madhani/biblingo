@@ -1,32 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../models/app_models.dart';
+import '../services/app_data.dart';
 import 'book_divider.dart';
 import 'chapter_node.dart';
 
 class LearningPath extends StatelessWidget {
   final List<Chapter> chapters;
-  final List<Book> books;
-  final Function(int) onChapterTap;
+  final Function(int) onChapterClick;
 
   const LearningPath({
     super.key,
     required this.chapters,
-    required this.books,
-    required this.onChapterTap,
+    required this.onChapterClick,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.only(
-          top: 20,
-          bottom: 120, // Space for floating navigation
-          left: 16,
-          right: 16,
-        ),
         child: Column(
           children: _buildPathElements(),
         ),
@@ -35,70 +28,68 @@ class LearningPath extends StatelessWidget {
   }
 
   List<Widget> _buildPathElements() {
-    List<Widget> elements = [];
-    int? currentBookId;
-    bool isFirstNode = true;
+    final List<Widget> elements = [];
+    final groupedChapters = <int, List<Chapter>>{};
 
-    for (int i = 0; i < chapters.length; i++) {
-      final chapter = chapters[i];
-      final book = books.firstWhere((b) => b.id == chapter.bookId);
+    // Group chapters by book
+    for (final chapter in chapters) {
+      groupedChapters.putIfAbsent(chapter.bookId, () => []).add(chapter);
+    }
 
-      // Add book divider when switching to a new book
-      if (currentBookId != chapter.bookId) {
-        if (!isFirstNode) {
-          elements.add(const SizedBox(height: 20));
-        }
-        elements.add(BookDivider(book: book));
-        elements.add(const SizedBox(height: 30));
-        currentBookId = chapter.bookId;
-      }
+    // Build path elements for each book
+    for (final book in AppData.books) {
+      final bookChapters = groupedChapters[book.id] ?? [];
+      if (bookChapters.isEmpty) continue;
 
-      // Add connecting path line (except for first node)
-      if (!isFirstNode) {
-        elements.add(_buildPathLine());
-      }
-
-      // Add chapter node
+      // Add book divider
+      final completedInBook = bookChapters
+          .where((ch) => ch.status == ChapterStatus.completed)
+          .length;
       elements.add(
-        Center(
-          child: ChapterNode(
-            chapter: chapter,
-            book: book,
-            onTap: () => onChapterTap(chapter.id),
-          ),
+        BookDivider(
+          book: book,
+          completedChapters: completedInBook,
+          totalChapters: _getTotalChaptersForBook(book.id),
         ),
       );
 
-      isFirstNode = false;
+      // Add chapter nodes for this book
+      for (int i = 0; i < bookChapters.length; i++) {
+        final chapter = bookChapters[i];
+        final isAlternate = i % 2 == 1;
+
+        elements.add(
+          ChapterNode(
+            chapter: chapter,
+            book: book,
+            isAlternatePosition: isAlternate,
+            onTap: () => onChapterClick(chapter.id),
+          ),
+        );
+      }
+
+      // Add spacing between books
+      elements.add(const SizedBox(height: 40));
     }
+
+    // Add bottom padding for navigation
+    elements.add(const SizedBox(height: 100));
 
     return elements;
   }
 
-  Widget _buildPathLine() {
-    return Container(
-      height: 40,
-      width: 3,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.grey[300]!,
-            Colors.grey[400]!,
-            Colors.grey[300]!,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 2,
-            offset: const Offset(1, 0),
-          ),
-        ],
-      ),
-    );
+  int _getTotalChaptersForBook(int bookId) {
+    // This would normally come from a database or API
+    // For now, using sample data
+    const totalChapters = {
+      1: 50, // سفر التكوين
+      2: 40, // سفر الخروج
+      3: 27, // سفر اللاويين
+      4: 36, // سفر العدد
+      5: 34, // سفر التثنية
+      6: 24, // سفر يشوع
+    };
+
+    return totalChapters[bookId] ?? 25;
   }
 }

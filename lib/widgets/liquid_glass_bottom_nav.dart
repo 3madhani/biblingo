@@ -1,308 +1,141 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../constants/app_colors.dart';
 
-class LiquidGlassBottomNavigation extends StatefulWidget {
-  final int currentIndex;
-  final Function(int) onTap;
+class LiquidGlassBottomNav extends StatefulWidget {
+  final String activeTab;
+  final Function(String) onTabChange;
 
-  const LiquidGlassBottomNavigation({
+  const LiquidGlassBottomNav({
     super.key,
-    required this.currentIndex,
-    required this.onTap,
+    required this.activeTab,
+    required this.onTabChange,
   });
 
   @override
-  State<LiquidGlassBottomNavigation> createState() =>
-      _LiquidGlassBottomNavigationState();
+  State<LiquidGlassBottomNav> createState() => _LiquidGlassBottomNavState();
 }
 
-class _LiquidGlassBottomNavigationState
-    extends State<LiquidGlassBottomNavigation> with TickerProviderStateMixin {
-  late AnimationController _shineController;
-  late AnimationController _pulseController;
-  late Animation<double> _shineAnimation;
-  late Animation<double> _pulseAnimation;
+class _LiquidGlassBottomNavState extends State<LiquidGlassBottomNav>
+    with TickerProviderStateMixin {
+  late AnimationController _rippleController;
+  late AnimationController _glowController;
+  late AnimationController _floatController;
 
   @override
   Widget build(BuildContext context) {
-    final tabs = [
-      {
-        'icon': Icons.auto_stories_outlined,
-        'activeIcon': Icons.auto_stories,
-        'label': 'المسار'
-      },
-      {
-        'icon': Icons.quiz_outlined,
-        'activeIcon': Icons.quiz,
-        'label': 'الأسئلة'
-      },
-      {
-        'icon': Icons.bookmark_border_rounded,
-        'activeIcon': Icons.bookmark,
-        'label': 'المفضلة'
-      },
-      {
-        'icon': Icons.settings_outlined,
-        'activeIcon': Icons.settings,
-        'label': 'الإعدادات'
-      },
-    ];
+    return AnimatedBuilder(
+      animation: Listenable.merge([_glowController, _floatController]),
+      builder: (context, child) {
+        return Positioned(
+          bottom: 25,
+          left: 20,
+          right: 20,
+          child: Transform.translate(
+            offset: Offset(0, _floatController.value * 2),
+            child: Container(
+              height: 80,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: AppColors.goldLight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  // Main shadow
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                  // Golden glow
+                  BoxShadow(
+                    color: AppColors.goldPrimary
+                        .withOpacity(0.2 + _glowController.value * 0.1),
+                    blurRadius: 30,
+                    spreadRadius: 5,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Glass background
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withOpacity(0.25),
+                            Colors.white.withOpacity(0.15),
+                            Colors.white.withOpacity(0.1),
+                          ],
+                        ),
+                      ),
+                    ),
 
-    return Positioned(
-      bottom: 24,
-      left: 16,
-      right: 16,
-      child: SizedBox(
-        height: 80,
-        child: Stack(
-          children: [
-            // Floating shadow - Much softer
-            Positioned(
-              bottom: -6,
-              left: 4,
-              right: 4,
-              child: Container(
-                height: 68,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 15,
-                      offset: const Offset(0, 6),
+                    // Backdrop blur effect simulation
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.goldLight.withOpacity(0.3),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+
+                    // Navigation items
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildNavItem(
+                            'path',
+                            Icons.route,
+                            'المسار',
+                            widget.activeTab == 'path',
+                          ),
+                          _buildNavItem(
+                            'progress',
+                            Icons.trending_up,
+                            'التقدم',
+                            widget.activeTab == 'progress',
+                          ),
+                          _buildNavItem(
+                            'community',
+                            Icons.groups,
+                            'المجتمع',
+                            widget.activeTab == 'community',
+                          ),
+                          _buildNavItem(
+                            'settings',
+                            Icons.settings,
+                            'الإعدادات',
+                            widget.activeTab == 'settings',
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-
-            // Main ultra-transparent glass container
-            GestureDetector(
-              onTap: _startShineEffect,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                  child: Container(
-                    height: 72,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withOpacity(0.08),
-                          Colors.white.withOpacity(0.05),
-                          Colors.white.withOpacity(0.03),
-                        ],
-                      ),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.08),
-                        width: 0.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 20,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        // Ultra-subtle shine effect overlay (fixed)
-                        Positioned(
-                          top: 0,
-                          bottom: 0,
-                          child: AnimatedBuilder(
-                            animation: _shineAnimation,
-                            builder: (context, child) {
-                              return Transform.translate(
-                                offset: Offset(
-                                  _shineAnimation.value *
-                                      MediaQuery.of(context).size.width,
-                                  0,
-                                ),
-                                child: Container(
-                                  width: 80,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                      colors: [
-                                        Colors.transparent,
-                                        Colors.white.withOpacity(0.1),
-                                        Colors.transparent,
-                                      ],
-                                    ),
-                                  ),
-                                  transform: Matrix4.skewX(-0.2),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-
-                        // Navigation items
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: List.generate(tabs.length, (index) {
-                              final tab = tabs[index];
-                              final isActive = widget.currentIndex == index;
-
-                              return Expanded(
-                                child: GestureDetector(
-                                  onTap: () => widget.onTap(index),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 400),
-                                    curve: Curves.easeOutCubic,
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 2),
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
-                                      gradient: isActive
-                                          ? LinearGradient(
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                              colors: [
-                                                AppColors.primary
-                                                    .withOpacity(0.08),
-                                                AppColors.secondary
-                                                    .withOpacity(0.05),
-                                              ],
-                                            )
-                                          : null,
-                                      border: isActive
-                                          ? Border.all(
-                                              color: AppColors.primary
-                                                  .withOpacity(0.15),
-                                              width: 0.5,
-                                            )
-                                          : null,
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        // Icon with glow
-                                        Stack(
-                                          children: [
-                                            Positioned(
-                                              left: 0.5,
-                                              top: 0.5,
-                                              child: Icon(
-                                                isActive
-                                                    ? tab['activeIcon']
-                                                        as IconData
-                                                    : tab['icon'] as IconData,
-                                                size: 24,
-                                                color: isActive
-                                                    ? AppColors.primary
-                                                        .withOpacity(0.15)
-                                                    : Colors.grey
-                                                        .withOpacity(0.1),
-                                              ),
-                                            ),
-                                            AnimatedBuilder(
-                                              animation: _pulseAnimation,
-                                              builder: (context, child) {
-                                                return AnimatedContainer(
-                                                  duration: const Duration(
-                                                      milliseconds: 300),
-                                                  transform: Matrix4.identity()
-                                                    ..scale(isActive
-                                                        ? 1.0 +
-                                                            (_pulseAnimation
-                                                                        .value -
-                                                                    1.0) *
-                                                                0.05
-                                                        : 1.0),
-                                                  child: Icon(
-                                                    isActive
-                                                        ? tab['activeIcon']
-                                                            as IconData
-                                                        : tab['icon']
-                                                            as IconData,
-                                                    size: 24,
-                                                    color: isActive
-                                                        ? AppColors.primary
-                                                        : Colors.grey[600],
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        // Label
-                                        AnimatedDefaultTextStyle(
-                                          duration:
-                                              const Duration(milliseconds: 300),
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: isActive
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
-                                            color: isActive
-                                                ? AppColors.primary
-                                                : Colors.grey[600],
-                                            fontFamily: 'Cairo',
-                                          ),
-                                          child: Text(
-                                            tab['label'] as String,
-                                            textAlign: TextAlign.center,
-                                            textDirection: TextDirection.rtl,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                        ),
-
-                        // Bottom highlight
-                        Positioned(
-                          bottom: 0,
-                          left: 20,
-                          right: 20,
-                          child: Container(
-                            height: 0.5,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.white.withOpacity(0.1),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   @override
   void dispose() {
-    _shineController.dispose();
-    _pulseController.dispose();
+    _rippleController.dispose();
+    _glowController.dispose();
+    _floatController.dispose();
     super.dispose();
   }
 
@@ -310,31 +143,111 @@ class _LiquidGlassBottomNavigationState
   void initState() {
     super.initState();
 
-    // Shine animation controller
-    _shineController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+    _rippleController = AnimationController(
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    _shineAnimation = Tween<double>(begin: -1.0, end: 2.0).animate(
-      CurvedAnimation(parent: _shineController, curve: Curves.easeInOut),
-    );
 
-    // Pulse animation controller for active state
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+    _glowController = AnimationController(
+      duration: const Duration(seconds: 2),
       vsync: this,
-    );
-    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+    )..repeat(reverse: true);
 
-    // Start pulse animation for active tab
-    _pulseController.repeat(reverse: true);
+    _floatController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
   }
 
-  void _startShineEffect() {
-    _shineController.forward().then((_) {
-      _shineController.reset();
-    });
+  Widget _buildNavItem(String tab, IconData icon, String label, bool isActive) {
+    return GestureDetector(
+      onTap: () {
+        _rippleController.forward().then((_) {
+          _rippleController.reset();
+        });
+        widget.onTabChange(tab);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.goldPrimary.withOpacity(0.2)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(15),
+          border: isActive
+              ? Border.all(
+                  color: AppColors.goldPrimary.withOpacity(0.3),
+                  width: 1,
+                )
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              children: [
+                // Icon with 3D effect
+                Transform.translate(
+                  offset: isActive ? const Offset(0, -2) : Offset.zero,
+                  child: Icon(
+                    icon,
+                    color:
+                        isActive ? AppColors.goldPrimary : AppColors.textMuted,
+                    size: 26,
+                  ),
+                ),
+
+                // Ripple effect
+                if (_rippleController.isAnimating && isActive)
+                  AnimatedBuilder(
+                    animation: _rippleController,
+                    builder: (context, child) {
+                      return Container(
+                        width: 24 + _rippleController.value * 20,
+                        height: 24 + _rippleController.value * 20,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.goldPrimary.withOpacity(
+                              1.0 - _rippleController.value,
+                            ),
+                            width: 2,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 2),
+
+            // Label
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? AppColors.goldPrimary : AppColors.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    )
+        .animate(target: isActive ? 1 : 0)
+        .scaleXY(
+          begin: 1.0,
+          end: 1.1,
+          duration: 200.milliseconds,
+          curve: Curves.easeInOut,
+        )
+        .then()
+        .shimmer(
+          duration: 1.seconds,
+          color: AppColors.goldPrimary.withOpacity(0.3),
+        );
   }
 }

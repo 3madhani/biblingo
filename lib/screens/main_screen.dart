@@ -1,98 +1,78 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 
 import '../constants/app_colors.dart';
-import '../models/app_models.dart';
+import '../services/user_progress_service.dart';
+import '../widgets/floating_particles.dart';
 import '../widgets/learning_path.dart';
-import '../widgets/liquid_glass_bottom_nav.dart';
 import '../widgets/progress_bar.dart';
-import 'lesson_screen.dart';
-import 'settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final Function(int) onChapterClick;
+
+  const MainScreen({
+    super.key,
+    required this.onChapterClick,
+  });
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
-  int _currentBottomNavIndex = 0;
-  List<Chapter> _chapters = List.from(AppData.initialChapters);
-  late AnimationController _headerAnimationController;
-  late Animation<double> _headerSlideAnimation;
-
-  int get _completedChapters {
-    return _chapters.where((ch) => ch.status == ChapterStatus.completed).length;
-  }
-
+  late AnimationController _headerController;
+  late AnimationController _backgroundController;
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          // Background gradient
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.background,
-                  AppColors.backgroundLight,
-                  AppColors.background,
-                ],
-                stops: const [0.0, 0.5, 1.0],
+    return Consumer<UserProgressService>(
+      builder: (context, progressService, child) {
+        final completedChapters = progressService.completedChapters;
+        final totalChapters = progressService.chapters.length;
+
+        return Scaffold(
+          body: Stack(
+            children: [
+              // Floating particles background
+              const FloatingParticles(
+                particleCount: 25,
+                particleColor: Color(0x33D4AF37),
+                minSize: 2.0,
+                maxSize: 8.0,
               ),
-            ),
-          ),
 
-          // Main content
-          SafeArea(
-            child: Column(
-              children: [
-                // Animated Header
-                AnimatedBuilder(
-                  animation: _headerSlideAnimation,
-                  builder: (context, child) {
-                    return Transform.translate(
-                      offset: Offset(0, _headerSlideAnimation.value),
-                      child: _buildHeader(),
-                    );
-                  },
-                ),
+              // Animated background decorations
+              _buildBackgroundDecorations(),
+              Column(
+                children: [
+                  _buildHeader(context, progressService, completedChapters),
 
-                // Progress Bar
-                ProgressBar(
-                  progress: _completedChapters,
-                  total: _chapters.length,
-                ),
+                  // Progress Section
+                  _buildProgressSection(
+                      context, completedChapters, totalChapters),
 
-                // Learning Path
-                Expanded(
-                  child: LearningPath(
-                    chapters: _chapters,
-                    books: AppData.books,
-                    onChapterTap: _handleChapterTap,
+                  // Learning Path
+                  Expanded(
+                    child: LearningPath(
+                      chapters: progressService.chapters,
+                      onChapterClick: widget.onChapterClick,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
-
-          // Ultra-transparent floating bottom navigation
-          LiquidGlassBottomNavigation(
-            currentIndex: _currentBottomNavIndex,
-            onTap: _handleBottomNavTap,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   @override
   void dispose() {
-    _headerAnimationController.dispose();
+    _headerController.dispose();
+    _backgroundController.dispose();
     super.dispose();
   }
 
@@ -100,241 +80,375 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _headerAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+    _headerController = AnimationController(
+      duration: const Duration(seconds: 2),
       vsync: this,
     );
 
-    _headerSlideAnimation = Tween<double>(
-      begin: -100.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _headerAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _backgroundController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    )..repeat();
 
-    _headerAnimationController.forward();
+    _headerController.forward();
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // App logo with 3D effect
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.primary,
-                  AppColors.secondary,
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-                BoxShadow(
-                  color: Colors.white.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Shine effect
-                Container(
+  Widget _buildBackgroundDecorations() {
+    return AnimatedBuilder(
+      animation: _backgroundController,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            // Floating golden orbs
+            ...List.generate(5, (index) {
+              final angle =
+                  (_backgroundController.value + index / 5) * 2 * math.pi;
+              final radius = 50.0 + index * 30;
+              final x = MediaQuery.of(context).size.width / 2 +
+                  math.cos(angle) * radius;
+              final y = 200 + math.sin(angle * 0.7) * 100;
+
+              return Positioned(
+                left: x,
+                top: y,
+                child: Container(
+                  width: 20 + index * 5,
+                  height: 20 + index * 5,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                    gradient: RadialGradient(
                       colors: [
-                        Colors.white.withOpacity(0.3),
+                        AppColors.goldSecondary.withOpacity(0.3),
+                        AppColors.goldPrimary.withOpacity(0.1),
                         Colors.transparent,
                       ],
-                      stops: const [0.0, 0.7],
                     ),
+                    shape: BoxShape.circle,
                   ),
                 ),
+              );
+            }),
 
-                // Logo text
-                Text(
-                  'B',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.3),
-                        offset: const Offset(0, 2),
-                        blurRadius: 4,
+            // Decorative geometric shapes
+            Positioned(
+              right: 30,
+              top: 150,
+              child: Transform.rotate(
+                angle: _backgroundController.value * 2 * math.pi,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.goldLight.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+
+            Positioned(
+              left: 40,
+              top: 300,
+              child: Transform.rotate(
+                angle: -_backgroundController.value * 1.5 * math.pi,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.goldPrimary.withOpacity(0.2),
+                        AppColors.goldSecondary.withOpacity(0.3),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, UserProgressService progressService,
+      int completedChapters) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.glassBorder,
+            width: 1,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  // App Icon
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.goldGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: AppColors.buttonShadow,
+                    ),
+                    child: const Icon(
+                      Icons.auto_stories_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ).animate().scale(
+                      delay: 100.ms,
+                      duration: 600.ms,
+                      curve: Curves.elasticOut),
+
+                  const SizedBox(width: 16),
+
+                  // App Title
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Biblingo',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        Text(
+                          'تعلم الكتاب المقدس',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 14,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Stats
+                  Row(
+                    children: [
+                      _buildStatBadge(
+                        Icons.local_fire_department_rounded,
+                        '${progressService.currentStreak}',
+                        Colors.orange,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildStatBadge(
+                        Icons.star_rounded,
+                        '${progressService.totalXP}',
+                        AppColors.goldPrimary,
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF3B82F6).withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.person_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 16),
-
-          // App title
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Biblingo',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                    fontFamily: 'Cairo',
-                  ),
-                ),
-                Text(
-                  'تعلم الكتاب المقدس',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textMuted,
-                    fontFamily: 'Cairo',
-                  ),
-                  textDirection: TextDirection.rtl,
-                ),
-              ],
-            ),
-          ),
-
-          // Settings button
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.light,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: IconButton(
-              onPressed: () => _handleBottomNavTap(3),
-              icon: Icon(
-                Icons.settings_outlined,
-                color: AppColors.primary,
-                size: 22,
+                ],
               ),
+
+              const SizedBox(height: 16),
+
+              // Greeting
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.goldLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.goldSecondary,
+                    width: 1,
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.waving_hand_rounded,
+                      color: AppColors.goldPrimary,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'مرحباً بك! استمر في رحلتك لتعلم الكتاب المقدس',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 14,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 300.ms).slideX(begin: 0.3, end: 0),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressSection(
+      BuildContext context, int completedChapters, int totalChapters) {
+    final progressPercentage = totalChapters > 0
+        ? (completedChapters / totalChapters * 100).round()
+        : 0;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.glassBackground.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.goldLight,
+          width: 2,
+        ),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'تقدمك اليومي',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+              ),
+              Text(
+                '$completedChapters من $totalChapters إصحاح',
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 14,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          ProgressBar(
+            progress: completedChapters,
+            total: totalChapters,
+          ),
+
+          const SizedBox(height: 20),
+
+          // Progress Stats
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildProgressStat(
+                '$completedChapters',
+                'مكتمل',
+                const Color(0xFF3B82F6),
+              ),
+              _buildProgressStat(
+                '7',
+                'أيام متتالية',
+                Colors.orange,
+              ),
+              _buildProgressStat(
+                '$progressPercentage%',
+                'نسبة الإنجاز',
+                AppColors.goldPrimary,
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.3, end: 0);
+  }
+
+  Widget _buildProgressStat(String value, String label, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 12,
+            color: AppColors.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatBadge(IconData icon, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
             ),
           ),
         ],
       ),
     );
-  }
-
-  void _handleAnswerSubmit(int chapterId, bool correct) {
-    if (correct) {
-      setState(() {
-        _chapters = _chapters.map((ch) {
-          if (ch.id == chapterId && ch.status == ChapterStatus.current) {
-            return ch.copyWith(status: ChapterStatus.completed);
-          }
-          if (ch.id == chapterId + 1 && ch.status == ChapterStatus.locked) {
-            return ch.copyWith(status: ChapterStatus.current);
-          }
-          return ch;
-        }).toList();
-      });
-    }
-  }
-
-  void _handleBottomNavTap(int index) {
-    setState(() {
-      _currentBottomNavIndex = index;
-    });
-
-    if (index == 3) {
-      // Settings tab
-      Navigator.of(context).push(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              SettingsScreen(
-            onThemeChanged: () {
-              setState(() {}); // Refresh the UI when theme changes
-            },
-          ),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            const begin = Offset(1.0, 0.0);
-            const end = Offset.zero;
-            const curve = Curves.easeOutCubic;
-
-            var tween = Tween(begin: begin, end: end).chain(
-              CurveTween(curve: curve),
-            );
-
-            return SlideTransition(
-              position: animation.drive(tween),
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
-    }
-  }
-
-  void _handleChapterTap(int chapterId) {
-    final chapter = _chapters.firstWhere((ch) => ch.id == chapterId);
-    if (chapter.status != ChapterStatus.locked) {
-      Navigator.of(context).push(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => LessonScreen(
-            chapter: chapter,
-            question: AppData.sampleQuestion,
-            onAnswer: (correct) => _handleAnswerSubmit(chapterId, correct),
-            onBack: () => Navigator.of(context).pop(),
-          ),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            const begin = Offset(1.0, 0.0);
-            const end = Offset.zero;
-            const curve = Curves.easeOutCubic;
-
-            var tween = Tween(begin: begin, end: end).chain(
-              CurveTween(curve: curve),
-            );
-
-            return SlideTransition(
-              position: animation.drive(tween),
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
-    }
   }
 }

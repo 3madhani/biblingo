@@ -1,10 +1,10 @@
-enum ChapterStatus { completed, current, locked }
+import 'dart:ui';
 
 class Chapter {
   final int id;
   final int chapterNumber;
   final int bookId;
-  ChapterStatus status;
+  final ChapterStatus status;
 
   Chapter({
     required this.id,
@@ -28,17 +28,25 @@ class Chapter {
   }
 }
 
+enum ChapterStatus { completed, current, locked }
+
 class Book {
   final int id;
   final String name;
-  final String colorName;
+  final String colorKey;
+  final List<Color> gradientColors;
+  final int totalChapters;
 
-  const Book({
+  Book({
     required this.id,
     required this.name,
-    required this.colorName,
+    required this.colorKey,
+    required this.gradientColors,
+    required this.totalChapters,
   });
 }
+
+
 
 class Question {
   final int id;
@@ -47,7 +55,7 @@ class Question {
   final List<String> options;
   final int correctAnswer;
 
-  const Question({
+  Question({
     required this.id,
     required this.passage,
     required this.question,
@@ -56,38 +64,65 @@ class Question {
   });
 }
 
-// Sample data
-class AppData {
-  static const List<Book> books = [
-    Book(id: 1, name: 'سفر التكوين', colorName: 'emerald'),
-    Book(id: 2, name: 'سفر الخروج', colorName: 'blue'),
-    Book(id: 3, name: 'سفر اللاويين', colorName: 'purple'),
-    Book(id: 4, name: 'سفر العدد', colorName: 'rose'),
-  ];
+class StudyStats {
+  final int totalChaptersStudied;
+  final int totalTimeSpent; // in minutes
+  final int currentStreak;
+  final int totalQuizzes;
+  final int averageScore;
+  final int perfectScores;
+  final int booksStarted;
+  final int booksCompleted;
 
-  static List<Chapter> initialChapters = [
-    Chapter(id: 1, chapterNumber: 1, bookId: 1, status: ChapterStatus.completed),
-    Chapter(id: 2, chapterNumber: 2, bookId: 1, status: ChapterStatus.completed),
-    Chapter(id: 3, chapterNumber: 3, bookId: 1, status: ChapterStatus.current),
-    Chapter(id: 4, chapterNumber: 4, bookId: 1, status: ChapterStatus.locked),
-    Chapter(id: 5, chapterNumber: 5, bookId: 1, status: ChapterStatus.locked),
-    Chapter(id: 6, chapterNumber: 1, bookId: 2, status: ChapterStatus.locked),
-    Chapter(id: 7, chapterNumber: 2, bookId: 2, status: ChapterStatus.locked),
-    Chapter(id: 8, chapterNumber: 3, bookId: 2, status: ChapterStatus.locked),
-    Chapter(id: 9, chapterNumber: 1, bookId: 3, status: ChapterStatus.locked),
-    Chapter(id: 10, chapterNumber: 2, bookId: 3, status: ChapterStatus.locked),
-  ];
+  StudyStats({
+    required this.totalChaptersStudied,
+    required this.totalTimeSpent,
+    required this.currentStreak,
+    required this.totalQuizzes,
+    required this.averageScore,
+    required this.perfectScores,
+    required this.booksStarted,
+    required this.booksCompleted,
+  });
+}
 
-  static const Question sampleQuestion = Question(
-    id: 1,
-    passage: "في البدء خلق الله السماوات والأرض. وكانت الأرض خربة وخالية، وعلى وجه الغمر ظلمة، وروح الله يرف على وجه المياه.",
-    question: "ماذا خلق الله في البداية؟",
-    options: [
-      "الأرض فقط",
-      "السماوات فقط", 
-      "السماوات والأرض",
-      "المياه والظلمة"
-    ],
-    correctAnswer: 2,
-  );
+class BookProgress {
+  final int id;
+  final String name;
+  final int totalChapters;
+  final int completedChapters;
+  final String color;
+  final String gradientFrom;
+  final String gradientTo;
+
+  BookProgress({
+    required this.id,
+    required this.name,
+    required this.totalChapters,
+    required this.completedChapters,
+    required this.color,
+    required this.gradientFrom,
+    required this.gradientTo,
+  });
+
+  double get progressPercentage => totalChapters > 0 ? completedChapters / totalChapters : 0.0;
+}
+
+class QuizResults {
+  final int score;
+  final int totalQuestions;
+  final int timeSpent; // in seconds
+  final List<int> correctAnswers;
+  final List<int> wrongAnswers;
+
+  QuizResults({
+    required this.score,
+    required this.totalQuestions,
+    required this.timeSpent,
+    required this.correctAnswers,
+    required this.wrongAnswers,
+  });
+
+  double get scorePercentage => totalQuestions > 0 ? (score / totalQuestions) * 100 : 0.0;
+  bool get isPerfectScore => score == totalQuestions;
 }
